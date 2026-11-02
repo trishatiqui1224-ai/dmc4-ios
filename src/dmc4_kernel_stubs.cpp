@@ -39,3 +39,11 @@ void InstallKernelStubs() {
 }
 
 } // namespace dmc4::kernel
+
+namespace dmc4::recompiled {
+
+void RegisterFunctions() {
+    REXLOG_INFO("[DMC4 Recomp] Recompiled PowerPC functions registered.");
+}
+
+} // namespace dmc4::recompiled

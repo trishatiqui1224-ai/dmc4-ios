@@ -414,6 +414,8 @@ def generate_fallback_stubs(gen_dir: pathlib.Path, pdata: list[tuple[int, int]])
             "    // xstart startup stub",
             "}",
             "",
+            "void RegisterFunctions();",
+            "",
             "} // namespace dmc4::recompiled",
             "",
             "extern \"C\" REX_MODULE_EXPORT",

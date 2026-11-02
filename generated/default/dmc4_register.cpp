@@ -16,6 +16,8 @@ extern "C" void sub_822901D0([[maybe_unused]] PPCContext& __restrict ctx, [[mayb
     // xstart startup stub
 }
 
+void RegisterFunctions();
+
 } // namespace dmc4::recompiled
 
 extern "C" REX_MODULE_EXPORT
