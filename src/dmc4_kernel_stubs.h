@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstdint>
+#include <rex/ppc.h>
 #include <rex/runtime.h>
 
 namespace dmc4::kernel {
@@ -10,6 +11,6 @@ namespace dmc4::kernel {
 void InstallKernelStubs();
 
 // Unresolved indirect call logger with caller LR & thread ID
-void LogUnresolvedIndirectCall(rex::Context& ctx, uint32_t target_addr);
+void LogUnresolvedIndirectCall(PPCContext& ctx, uint32_t target_addr);
 
 } // namespace dmc4::kernel
