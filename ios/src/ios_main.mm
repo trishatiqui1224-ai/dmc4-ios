@@ -11,6 +11,7 @@
 
 #include <sys/stat.h>
 #include <sys/sysctl.h>
+#include <mach/mach_time.h>
 #include <csignal>
 #include <cstdlib>
 #include <filesystem>
@@ -252,6 +253,7 @@ int main(int argc, char* argv[]) {
     // -----------------------------------------------------------------------
     // 1. iOS Sandbox Filesystem Safety: PRE-CREATE and SETENV at VERY TOP
     // -----------------------------------------------------------------------
+    std::error_code ec;
     @autoreleasepool {
         fs::path docs = DocumentsFolder();
         fs::path caches = CachesFolder();
@@ -261,7 +263,6 @@ int main(int argc, char* argv[]) {
         fs::path xdg_cache = caches;
         fs::path xdg_config = docs / "config";
 
-        std::error_code ec;
         fs::create_directories(xdg_data, ec);
         fs::create_directories(xdg_cache, ec);
         fs::create_directories(xdg_config, ec);

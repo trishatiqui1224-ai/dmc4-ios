@@ -197,14 +197,20 @@ std::vector<fs::path> FindGameFiles(const fs::path& documents) {
 
 void ShowLauncher(int argc, char* argv[], std::vector<std::string>& game_args, const fs::path& game_path) {
     UIWindow* keyWindow = nil;
-    for (UIWindow* w in [UIApplication sharedApplication].windows) {
-        if (w.isKeyWindow) {
-            keyWindow = w;
-            break;
+    for (UIScene* scene in [UIApplication sharedApplication].connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            UIWindowScene* ws = (UIWindowScene*)scene;
+            for (UIWindow* w in ws.windows) {
+                if (w.isKeyWindow) {
+                    keyWindow = w;
+                    break;
+                }
+            }
+            if (!keyWindow && ws.windows.count > 0) {
+                keyWindow = ws.windows.firstObject;
+            }
         }
-    }
-    if (!keyWindow && [UIApplication sharedApplication].windows.count > 0) {
-        keyWindow = [UIApplication sharedApplication].windows.firstObject;
+        if (keyWindow) break;
     }
 
     UIViewController* rootVC = keyWindow.rootViewController;

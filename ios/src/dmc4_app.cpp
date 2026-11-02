@@ -53,11 +53,17 @@ int RunGame(const std::vector<std::string>& args, const std::filesystem::path& g
 
     // 2. Attach Always-On-Top Touch Controls UIKit Overlay (zPosition = 9999)
     UIWindow* keyWindow = nil;
-    for (UIWindow* w in [UIApplication sharedApplication].windows) {
-        if (w.isKeyWindow) {
-            keyWindow = w;
-            break;
+    for (UIScene* scene in [UIApplication sharedApplication].connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            UIWindowScene* ws = (UIWindowScene*)scene;
+            for (UIWindow* w in ws.windows) {
+                if (w.isKeyWindow) {
+                    keyWindow = w;
+                    break;
+                }
+            }
         }
+        if (keyWindow) break;
     }
     if (keyWindow && keyWindow.rootViewController) {
         dmc4::touch::InstallTouchOverlay(keyWindow.rootViewController.view);

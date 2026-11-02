@@ -24,6 +24,8 @@ struct TouchSettings {
     bool hapticsEnabled = true;
     bool hideWhenControllerConnected = true;
     bool danteStyleCrossVisible = true;
+    bool cameraPanZoneEnabled = true; // Touch & drag right side of screen to pan camera
+    bool combatGesturesEnabled = true; // Swipe up/down for Streak/High Time, swipe Bringer for Snatch
 };
 
 // Initializes the Touch Overlay on the primary window/view
