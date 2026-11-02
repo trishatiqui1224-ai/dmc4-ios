@@ -207,7 +207,10 @@ MVK_INSTANCE_ANCHOR = """  loader_candidates.emplace_back(platform::lib_names::k
 """
 MVK_INSTANCE_NEW = """#if REX_PLATFORM_IOS
   // DMC4 iOS Patch: Priority candidate MoltenVK.framework inside Frameworks/
+  namespace rex::filesystem { std::filesystem::path GetExecutableFolder(); }
   loader_candidates.emplace_back(rex::filesystem::GetExecutableFolder() / "MoltenVK.framework" / "MoltenVK");
+  loader_candidates.emplace_back("Frameworks/MoltenVK.framework/MoltenVK");
+  loader_candidates.emplace_back("MoltenVK.framework/MoltenVK");
 #endif
   loader_candidates.emplace_back(platform::lib_names::kVulkanLoader);
   loader_candidates.emplace_back("libvulkan.dylib");
