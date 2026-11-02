@@ -118,7 +118,16 @@ jobs:
           fi
 
           if [ -d "../rexglue-sdk-ios" ]; then
-            (cd ../rexglue-sdk-ios && git tag -f v0.10.0 HEAD 2>/dev/null || true)
+            echo "[CI] Initializing ReXGlue third-party submodules (skipping desktop loader & MoltenVK repo)..."
+            pushd ../rexglue-sdk-ios
+            git tag -f v0.10.0 HEAD 2>/dev/null || true
+            git submodule init
+            git config submodule.thirdparty/moltenvk.update none
+            git config submodule.thirdparty/vulkan-loader.update none
+            git config submodule.thirdparty/tracy.update none
+            git config submodule.thirdparty/catch2.update none
+            git submodule update --init --recursive --depth=1
+            popd
             python3 tools/ios/prepare_sdk.py --sdk "../rexglue-sdk-ios"
           fi
 

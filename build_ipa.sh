@@ -22,6 +22,17 @@ python3 tools/build_dmc4_codegen.py
 
 # 3. Prepare ReXGlue iOS SDK & MoltenVK
 echo "[3/5] Preparing ReXGlue iOS SDK & MoltenVK..."
+if [ -d "${REPO_ROOT}/../rexglue-sdk-ios" ]; then
+  pushd "${REPO_ROOT}/../rexglue-sdk-ios" >/dev/null
+  git tag -f v0.10.0 HEAD 2>/dev/null || true
+  git submodule init
+  git config submodule.thirdparty/moltenvk.update none
+  git config submodule.thirdparty/vulkan-loader.update none
+  git config submodule.thirdparty/tracy.update none
+  git config submodule.thirdparty/catch2.update none
+  git submodule update --init --recursive --depth=1 || true
+  popd >/dev/null
+fi
 python3 tools/ios/prepare_sdk.py --sdk "${REPO_ROOT}/../rexglue-sdk-ios"
 
 # 4. Configure CMake with iOS ARM64 Toolchain
