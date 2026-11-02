@@ -27,7 +27,7 @@ void LogUnresolvedIndirectCall(PPCContext& ctx, uint32_t target_addr) {
     uint64_t tid = 0;
     pthread_threadid_np(nullptr, &tid);
     REXLOG_ERROR("[DMC4 INDIRECT CALL] Unresolved target: 0x{:08X} | Caller LR: 0x{:08X} | Thread ID: {}",
-                 target_addr, static_cast<uint32_t>(ctx.lr.u32), tid);
+                 target_addr, static_cast<uint32_t>(ctx.lr), tid);
     rex::FlushLogging();
     if (auto logger = spdlog::default_logger()) {
         logger->flush();
