@@ -214,6 +214,84 @@ MVK_INSTANCE_NEW = """#if REX_PLATFORM_IOS
   loader_candidates.emplace_back("libMoltenVK.dylib");
 """
 
+# 5. iOS Darwin Mach VM support in src/core/memory_posix.cpp (replaces unsupported mach_vm.h)
+MACH_VM_HEADER_ANCHOR = """#if REX_PLATFORM_MAC
+#include <mach/mach.h>
+#include <mach/mach_vm.h>
+#include <mach/vm_region.h>
+#endif  // REX_PLATFORM_MAC
+"""
+MACH_VM_HEADER_NEW = """#if REX_PLATFORM_MAC
+#include <mach/mach.h>
+#if !REX_PLATFORM_IOS
+#include <mach/mach_vm.h>
+#else
+#include <mach/vm_map.h>
+#endif
+#include <mach/vm_region.h>
+#endif  // REX_PLATFORM_MAC
+"""
+
+QUERY_PROTECT_ANCHOR = """bool QueryProtect(void* base_address, size_t& length, PageAccess& access_out) {
+#if REX_PLATFORM_MAC
+  mach_vm_address_t address = reinterpret_cast<mach_vm_address_t>(base_address);
+  mach_vm_size_t region_size = 0;
+  vm_region_basic_info_data_64_t info;
+  mach_msg_type_number_t info_count = VM_REGION_BASIC_INFO_COUNT_64;
+  mach_port_t object_name;
+
+  kern_return_t kr =
+      mach_vm_region(mach_task_self(), &address, &region_size, VM_REGION_BASIC_INFO_64,
+                     reinterpret_cast<vm_region_info_t>(&info), &info_count, &object_name);
+"""
+QUERY_PROTECT_NEW = """bool QueryProtect(void* base_address, size_t& length, PageAccess& access_out) {
+#if REX_PLATFORM_IOS
+  vm_address_t address = reinterpret_cast<vm_address_t>(base_address);
+  vm_size_t region_size = 0;
+  vm_region_basic_info_data_64_t info;
+  mach_msg_type_number_t info_count = VM_REGION_BASIC_INFO_COUNT_64;
+  mach_port_t object_name;
+
+  kern_return_t kr =
+      vm_region_64(mach_task_self(), &address, &region_size, VM_REGION_BASIC_INFO_64,
+                   reinterpret_cast<vm_region_info_t>(&info), &info_count, &object_name);
+  if (kr != KERN_SUCCESS) {
+    return false;
+  }
+  if (address > reinterpret_cast<vm_address_t>(base_address)) {
+    return false;
+  }
+
+  length = static_cast<size_t>((address + region_size) -
+                               reinterpret_cast<vm_address_t>(base_address));
+
+  if ((info.protection & (VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE)) ==
+      (VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE)) {
+    access_out = PageAccess::kExecuteReadWrite;
+  } else if ((info.protection & (VM_PROT_READ | VM_PROT_EXECUTE)) ==
+             (VM_PROT_READ | VM_PROT_EXECUTE)) {
+    access_out = PageAccess::kExecuteRead;
+  } else if ((info.protection & (VM_PROT_READ | VM_PROT_WRITE)) ==
+             (VM_PROT_READ | VM_PROT_WRITE)) {
+    access_out = PageAccess::kReadWrite;
+  } else if (info.protection & VM_PROT_READ) {
+    access_out = PageAccess::kReadOnly;
+  } else {
+    access_out = PageAccess::kNoAccess;
+  }
+  return true;
+#elif REX_PLATFORM_MAC
+  mach_vm_address_t address = reinterpret_cast<mach_vm_address_t>(base_address);
+  mach_vm_size_t region_size = 0;
+  vm_region_basic_info_data_64_t info;
+  mach_msg_type_number_t info_count = VM_REGION_BASIC_INFO_COUNT_64;
+  mach_port_t object_name;
+
+  kern_return_t kr =
+      mach_vm_region(mach_task_self(), &address, &region_size, VM_REGION_BASIC_INFO_64,
+                     reinterpret_cast<vm_region_info_t>(&info), &info_count, &object_name);
+"""
+
 DMC4_PATCH_BLOCKS = [
     ("thirdparty/CMakeLists.txt", "skip desktop vulkan-loader / submodule moltenvk on iOS",
      CMAKE_REQ_ANCHOR, CMAKE_REQ_NEW),
@@ -231,6 +309,10 @@ DMC4_PATCH_BLOCKS = [
      USER_FOLDER_ANCHOR, USER_FOLDER_NEW),
     ("src/ui/vulkan/vulkan_instance.cpp", "MoltenVK.framework candidate for iOS",
      MVK_INSTANCE_ANCHOR, MVK_INSTANCE_NEW),
+    ("src/core/memory_posix.cpp", "iOS Darwin Mach VM header routing (avoid unsupported mach_vm.h)",
+     MACH_VM_HEADER_ANCHOR, MACH_VM_HEADER_NEW),
+    ("src/core/memory_posix.cpp", "iOS QueryProtect using vm_region_64 instead of mach_vm_region",
+     QUERY_PROTECT_ANCHOR, QUERY_PROTECT_NEW),
 ]
 
 
