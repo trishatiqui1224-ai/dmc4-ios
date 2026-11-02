@@ -157,7 +157,7 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
 set(DMC4_APP_SOURCES
     src/ios_main.mm
     src/launcher.mm
-    src/dmc4_app.cpp
+    src/dmc4_app.mm
     src/touch_controls.mm
     src/audio/coreaudio_driver.mm
     src/vfs/iso_piece_reader.mm

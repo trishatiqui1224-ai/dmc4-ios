@@ -1,7 +1,6 @@
 // Devil May Cry 4 iOS Port - Adaptive Thread QoS Management
 // Ensures MT Framework worker & audio threads run at User Initiated QoS
 
-#import <Foundation/Foundation.h>
 #include <pthread.h>
 #include <rex/logging.h>
 

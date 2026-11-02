@@ -1077,9 +1077,13 @@ UIImage* CreateStyleGlyphIcon(char styleChar, CGFloat size, UIColor* tint) {
         }
     } else if (pan.state == UIGestureRecognizerStateChanged) {
         CGPoint translation = [pan translationInView:self.view];
-        CGFloat sens = 450.0f;
-        Sint16 rx = static_cast<Sint16>(std::clamp(translation.x * sens, -32767.0f, 32767.0f));
-        Sint16 ry = static_cast<Sint16>(std::clamp(translation.y * sens, -32767.0f, 32767.0f));
+        CGFloat sens = 450.0;
+        CGFloat valX = translation.x * sens;
+        CGFloat valY = translation.y * sens;
+        CGFloat clampedX = std::clamp<CGFloat>(valX, -32767.0, 32767.0);
+        CGFloat clampedY = std::clamp<CGFloat>(valY, -32767.0, 32767.0);
+        Sint16 rx = static_cast<Sint16>(clampedX);
+        Sint16 ry = static_cast<Sint16>(clampedY);
         SetAxisValue(2, rx);
         SetAxisValue(3, ry);
     } else if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled) {
@@ -1115,7 +1119,7 @@ UIImage* CreateStyleGlyphIcon(char styleChar, CGFloat size, UIColor* tint) {
 
 - (void)updateLayout {
     CGSize sz = self.view.bounds.size;
-    BOOL isPad = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad);
+    BOOL isPad = ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad);
     CGFloat scale = _settings.buttonScale * (isPad ? 1.25f : 1.0f);
     CGFloat pad = isPad ? 44.0f : 24.0f;
 
