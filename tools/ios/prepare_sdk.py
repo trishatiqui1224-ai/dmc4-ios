@@ -270,7 +270,7 @@ QUERY_PROTECT_NEW = """bool QueryProtect(void* base_address, size_t& length, Pag
     access_out = PageAccess::kExecuteReadWrite;
   } else if ((info.protection & (VM_PROT_READ | VM_PROT_EXECUTE)) ==
              (VM_PROT_READ | VM_PROT_EXECUTE)) {
-    access_out = PageAccess::kExecuteRead;
+    access_out = PageAccess::kExecuteReadOnly;
   } else if ((info.protection & (VM_PROT_READ | VM_PROT_WRITE)) ==
              (VM_PROT_READ | VM_PROT_WRITE)) {
     access_out = PageAccess::kReadWrite;
