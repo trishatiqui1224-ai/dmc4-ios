@@ -394,24 +394,34 @@ def generate_fallback_stubs(gen_dir: pathlib.Path, pdata: list[tuple[int, int]])
     register_cpp = gen_dir / "dmc4_register.cpp"
 
     gen_dir.mkdir(parents=True, exist_ok=True)
-    if not register_cpp.exists():
+    if not register_cpp.exists() or "IModuleRegistrar" not in register_cpp.read_text(encoding="utf-8", errors="ignore"):
         content = [
             "// Auto-generated DMC4 Recompilation Function Registration Fallback",
             "#include <cstdint>",
-            "#include <rex/runtime.h>",
+            "#include <rex/ppc.h>",
+            "#include <rex/system/function_dispatcher.h>",
+            "",
+            "#ifdef _WIN32",
+            "#define REX_MODULE_EXPORT __declspec(dllexport)",
+            "#else",
+            "#define REX_MODULE_EXPORT __attribute__((visibility(\"default\")))",
+            "#endif",
             "",
             "namespace dmc4::recompiled {",
             "",
             "// Ground-truth CRT entry point for Devil May Cry 4 (Title ID: 434307DF)",
-            "void sub_822901D0(rex::Context& ctx) {",
+            "extern \"C\" void sub_822901D0([[maybe_unused]] PPCContext& __restrict ctx, [[maybe_unused]] uint8_t* base) {",
             "    // xstart startup stub",
             "}",
             "",
-            "void RegisterFunctions() {",
-            "    rex::RegisterFunction(0x822901D0, &sub_822901D0);",
-            "}",
-            "",
             "} // namespace dmc4::recompiled",
+            "",
+            "extern \"C\" REX_MODULE_EXPORT",
+            "void ReXModule_Register(rex::runtime::IModuleRegistrar* registrar) {",
+            "    if (registrar) {",
+            "        registrar->SetFunction(0x822901D0, (::PPCFunc*)&dmc4::recompiled::sub_822901D0);",
+            "    }",
+            "}",
         ]
         register_cpp.write_text("\n".join(content) + "\n", encoding="utf-8")
 
