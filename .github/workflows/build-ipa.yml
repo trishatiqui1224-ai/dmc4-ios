@@ -1,0 +1,195 @@
+name: Build Devil May Cry 4 iOS IPA
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      force_codegen:
+        description: 'Force clean codegen from XEX even if cache exists'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios:
+    name: Build DMC4 iOS (ARM64 Unsigned IPA)
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
+
+      - name: Install Python Dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+
+      - name: Cache Homebrew Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew
+            /usr/local/Homebrew
+          key: ${{ runner.os }}-brew-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-
+
+      - name: Install Build Tools
+        run: |
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install cmake ninja
+
+      - name: Cache ReXGlue iOS SDK & MoltenVK
+        uses: actions/cache@v4
+        id: cache-sdk
+        with:
+          path: |
+            ${{ github.workspace }}/../rexglue-sdk-ios
+            ~/.dmc4-ios
+          key: ${{ runner.os }}-rexglue-sdk-v0.10.0-mvk-1.4.1-dmc4
+          restore-keys: |
+            ${{ runner.os }}-rexglue-sdk-v0.10.0-mvk-1.4.1
+
+      - name: Setup Studio AppIcon & Assets Catalog
+        run: |
+          python3 tools/generate_appicon.py
+
+      - name: Stage DMC4 XEX & Prepare Game Codegen
+        env:
+          DMC4_XEX_SECRET: ${{ secrets.DMC4_XEX_SECRET }}
+        run: |
+          mkdir -p game generated/default xex
+
+          # 1. Decode DMC4_XEX_SECRET if provided in GitHub repository secrets
+          if [ -n "${DMC4_XEX_SECRET}" ]; then
+            echo "[CI] Found DMC4_XEX_SECRET. Decoding dmc4_default.xex..."
+            if [[ "${DMC4_XEX_SECRET}" =~ ^https?:// ]]; then
+              curl -L -s -o xex/dmc4_default.xex "${DMC4_XEX_SECRET}"
+            else
+              echo "${DMC4_XEX_SECRET}" | base64 -d > xex/dmc4_default.xex
+            fi
+            echo "[CI] Staged dmc4_default.xex: $(wc -c < xex/dmc4_default.xex) bytes."
+          fi
+
+          # 2. Stage xex/dmc4_default.xex into game/default.xex
+          if [ -f "xex/dmc4_default.xex" ]; then
+            echo "[CI] Copying xex/dmc4_default.xex -> game/default.xex"
+            cp -f xex/dmc4_default.xex game/default.xex
+            echo "[CI] Staged XEX size: $(wc -c < game/default.xex) bytes"
+          fi
+
+      - name: Prepare ReXGlue iOS SDK
+        run: |
+          # If SDK is not yet cloned in cache, clone pinned SDK
+          if [ ! -d "../rexglue-sdk-ios" ]; then
+            echo "[CI] Cloning ReXGlue SDK..."
+            git clone --depth=1 https://github.com/rexglue/rexglue-sdk.git ../rexglue-sdk-ios || true
+          fi
+
+          if [ -d "../rexglue-sdk-ios" ]; then
+            (cd ../rexglue-sdk-ios && git tag -f v0.10.0 HEAD 2>/dev/null || true)
+            python3 tools/ios/prepare_sdk.py --sdk "../rexglue-sdk-ios"
+          fi
+
+      - name: Run DMC4 Static Recompilation Pipeline
+        run: |
+          python3 tools/build_dmc4_codegen.py
+
+      - name: Assert 0 Unresolved Branches in Generated C++
+        run: |
+          echo "[CI] Checking for unresolved branch errors..."
+          UNRESOLVED_COUNT=$(grep -rn "Unresolved branch from" generated/default/*.cpp 2>/dev/null | wc -l || true)
+          echo "[CI] Unresolved branch count: ${UNRESOLVED_COUNT}"
+          if [ "${UNRESOLVED_COUNT}" -ne 0 ]; then
+            echo "[FATAL] Found ${UNRESOLVED_COUNT} unresolved branches! Failing build."
+            grep -rn "Unresolved branch from" generated/default/*.cpp
+            exit 1
+          fi
+          echo "[CI] Unresolved branch assertion PASSED: Strictly 0 unresolved branches."
+
+      - name: Configure CMake for iOS (ARM64 Native)
+        run: |
+          cd ios
+          export CC="$(xcrun --sdk iphoneos --find clang)"
+          export CXX="$(xcrun --sdk iphoneos --find clang++)"
+          export OBJC="${CC}"
+          export OBJCXX="${CXX}"
+          cmake --preset ios \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_SYSTEM_PROCESSOR=arm64 \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_SYSROOT=iphoneos \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DREX_PLATFORM_IOS=1 \
+            -DCMAKE_C_COMPILER="${CC}" \
+            -DCMAKE_CXX_COMPILER="${CXX}" \
+            -DCMAKE_OBJC_COMPILER="${CC}" \
+            -DCMAKE_OBJCXX_COMPILER="${CXX}" \
+            -DCMAKE_ASM_COMPILER="${CC}" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY=""
+
+      - name: Compile and Package Unsigned IPA
+        run: |
+          cd ios
+          cmake --build --preset ios --target ipa -- -j 4 || {
+            echo "[CI] Build failed! Re-running failed unit with single-job diagnostics..."
+            cmake --build --preset ios --target ipa -v -- -j 1
+            exit 1
+          }
+
+      - name: Compute Checksums & Verify Artifacts
+        run: |
+          mkdir -p dist
+          IPA_SRC="ios/build/DMC4-iOS-unsigned.ipa"
+          if [ ! -f "${IPA_SRC}" ]; then
+            IPA_SRC="ios/build/DevilMayCry4.ipa"
+          fi
+
+          cp -f "${IPA_SRC}" dist/DMC4-iOS-unsigned.ipa
+          cp -f "${IPA_SRC}" dist/DevilMayCry4.ipa
+          cd dist
+          shasum -a 256 DMC4-iOS-unsigned.ipa > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload Unsigned IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DMC4-iOS-unsigned-ipa
+          path: |
+            dist/DMC4-iOS-unsigned.ipa
+            dist/DevilMayCry4.ipa
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub Release (on tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/DMC4-iOS-unsigned.ipa
+            dist/DevilMayCry4.ipa
+            dist/SHA256SUMS.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true

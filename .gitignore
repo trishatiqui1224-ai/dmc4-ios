@@ -1,0 +1,43 @@
+# Devil May Cry 4 iOS Port .gitignore
+*.iso
+*.rar
+*.7z
+*.zip
+*.bin
+*.cue
+*.img
+
+# Build directories
+build/
+ios/build/
+dist/
+out/
+bin/
+*.ipa
+Payload/
+
+# Generated ReXGlue artifacts
+# (sources.cmake and generated cpp files are generated during build)
+generated/default/*.o
+generated/default/*.obj
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.ninja
+.ninja_*
+compile_commands.json
+
+# IDE and OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+__pycache__/
+*.pyc
+
+# SDK local markers
+.rexglue*
+.dmc4-ios/
