@@ -201,13 +201,20 @@ USER_FOLDER_NEW = """std::filesystem::path GetUserFolder() {
 """
 
 # 4. MoltenVK candidate in src/ui/vulkan/vulkan_instance.cpp
+MVK_HEADER_ANCHOR = """#include <rex/cvar.h>
+#include <rex/logging.h>
+"""
+MVK_HEADER_NEW = """#include <rex/cvar.h>
+#include <rex/filesystem.h>
+#include <rex/logging.h>
+"""
+
 MVK_INSTANCE_ANCHOR = """  loader_candidates.emplace_back(platform::lib_names::kVulkanLoader);
   loader_candidates.emplace_back("libvulkan.dylib");
   loader_candidates.emplace_back("libMoltenVK.dylib");
 """
 MVK_INSTANCE_NEW = """#if REX_PLATFORM_IOS
   // DMC4 iOS Patch: Priority candidate MoltenVK.framework inside Frameworks/
-  namespace rex::filesystem { std::filesystem::path GetExecutableFolder(); }
   loader_candidates.emplace_back(rex::filesystem::GetExecutableFolder() / "MoltenVK.framework" / "MoltenVK");
   loader_candidates.emplace_back("Frameworks/MoltenVK.framework/MoltenVK");
   loader_candidates.emplace_back("MoltenVK.framework/MoltenVK");
@@ -310,6 +317,8 @@ DMC4_PATCH_BLOCKS = [
      FOLDER_ANCHOR, FOLDER_NEW),
     ("src/core/filesystem_posix.cpp", "GetUserFolder iOS sandbox routing to Documents/rex_data",
      USER_FOLDER_ANCHOR, USER_FOLDER_NEW),
+    ("src/ui/vulkan/vulkan_instance.cpp", "include rex/filesystem.h in vulkan_instance.cpp",
+     MVK_HEADER_ANCHOR, MVK_HEADER_NEW),
     ("src/ui/vulkan/vulkan_instance.cpp", "MoltenVK.framework candidate for iOS",
      MVK_INSTANCE_ANCHOR, MVK_INSTANCE_NEW),
     ("src/core/memory_posix.cpp", "iOS Darwin Mach VM header routing (avoid unsupported mach_vm.h)",
