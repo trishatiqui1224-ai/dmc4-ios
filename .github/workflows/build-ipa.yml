@@ -20,7 +20,7 @@ permissions:
 jobs:
   build-ios:
     name: Build DMC4 iOS (ARM64 Unsigned IPA)
-    runs-on: macos-15
+    runs-on: macos-14
 
     steps:
       - name: Checkout Repository

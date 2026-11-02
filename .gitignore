@@ -41,3 +41,5 @@ __pycache__/
 # SDK local markers
 .rexglue*
 .dmc4-ios/
+check_ci.py
+*.tmp
